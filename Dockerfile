@@ -1,25 +1,39 @@
+# ============================
+# Base Image
+# ============================
 FROM python:3.10-slim
 
-# Prevent interactive prompts
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# ============================
+# System Dependencies
+# ============================
+RUN apt-get update && apt-get install -y \
     build-essential \
     git \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
+# ============================
+# Work Directory
+# ============================
 WORKDIR /app
 
-# Copy project files
-COPY . .
-
-# Install PyTorch CPU (stable)
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-
-# Install Python dependencies
+# ============================
+# Install Python Dependencies
+# ============================
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# ============================
+# Copy App
+# ============================
+COPY . .
+
+# ============================
+# Expose Render Port
+# ============================
 EXPOSE 8000
 
-CMD ["python", "main.py"]
+# ============================
+# Start FastAPI
+# ============================
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
