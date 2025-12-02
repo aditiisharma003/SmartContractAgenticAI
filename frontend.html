@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Contract Security Auditor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            animation: fadeInDown 1s;
+        }
+        
+        .header h1 {
+            font-size: 3.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.3em;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+            animation: fadeInUp 1s;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: all 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        select, input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 18px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.6);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .results {
+            display: none;
+            animation: fadeInUp 0.5s;
+        }
+        
+        .results.active {
+            display: block;
+        }
+        
+        .vulnerability-card {
+            background: #fff5f5;
+            border-left: 5px solid #e53e3e;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        
+        .vulnerability-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .vulnerability-card.critical {
+            background: #fff5f5;
+            border-color: #e53e3e;
+        }
+        
+        .vulnerability-card.high {
+            background: #fffaf0;
+            border-color: #ed8936;
+        }
+        
+        .vulnerability-card.medium {
+            background: #fffff0;
+            border-color: #ecc94b;
+        }
+        
+        .vulnerability-card.low {
+            background: #f0fff4;
+            border-color: #48bb78;
+        }
+        
+        .severity-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .severity-critical {
+            background: #e53e3e;
+            color: white;
+        }
+        
+        .severity-high {
+            background: #ed8936;
+            color: white;
+        }
+        
+        .severity-medium {
+            background: #ecc94b;
+            color: #744210;
+        }
+        
+        .severity-low {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .score-display {
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            color: white;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .score-number {
+            font-size: 5em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .section-title {
+            font-size: 2em;
+            color: #333;
+            margin: 40px 0 25px 0;
+            padding-bottom: 15px;
+            border-bottom: 4px solid #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .optimization-card {
+            background: #f0f9ff;
+            border-left: 5px solid #3182ce;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        
+        .optimization-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .code-snippet {
+            background: #2d3748;
+            color: #48bb78;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .recommendation-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .recommendation-list li {
+            background: #f7fafc;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+            transition: all 0.3s;
+        }
+        
+        .recommendation-list li:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin: 40px 0;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 35px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+            animation: fadeInUp 1s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+        
+        .feature-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+        
+        .feature-icon {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        .example-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        .example-section h3 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+        
+        .example-section pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin-top: 15px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 1em;
+        }
+        
+        .alert {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        
+        .alert-success {
+            background: #f0fff4;
+            border-left: 5px solid #48bb78;
+            color: #22543d;
+        }
+        
+        .alert-warning {
+            background: #fffaf0;
+            border-left: 5px solid #ed8936;
+            color: #744210;
+        }
+        
+        .alert-danger {
+            background: #fff5f5;
+            border-left: 5px solid #e53e3e;
+            color: #742a2a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Smart Contract Security Auditor</h1>
+            <p>AI-Powered Vulnerability Detection with CrewAI + Google Gemini</p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <span class="feature-icon">🔍</span>
+                <h3>Vulnerability Scanning</h3>
+                <p>Detect reentrancy, overflow, and access control issues using advanced AI analysis</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">⚡</span>
+                <h3>Gas Optimization</h3>
+                <p>Reduce transaction costs with intelligent optimization recommendations</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📊</span>
+                <h3>Quality Assessment</h3>
+                <p>Comprehensive code quality and best practices review</p>
+            </div>
+            <div class="feature-card">
+                <span class="feature-icon">📝</span>
+                <h3>Detailed Reports</h3>
+                <p>Professional security audit documentation and insights</p>
+            </div>
+        </div>
+
+        <div class="example-section">
+            <h3>🧪 Try with Example Contract</h3>
+            <p>Don't have a contract ready? Try this vulnerable example:</p>
+            <pre style="font-size: 12px; color: #a0e9ff;">// Vulnerable Bank Contract (Reentrancy Risk)
+pragma solidity ^0.8.0;
+
+contract VulnerableBank {
+    mapping(address => uint256) public balances;
+    
+    function withdraw(uint256 amount) public {
+        require(balances[msg.sender] >= amount);
+        (bool sent, ) = msg.sender.call{value: amount}("");
+        require(sent);
+        balances[msg.sender] -= amount; // ⚠️ State change after external call
+    }
+}</pre>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 30px; color: #333;">📤 Submit Your Smart Contract for Audit</h2>
+            <form id="auditForm">
+                <div class="form-group">
+                    <label for="contractName">Contract Name *</label>
+                    <input type="text" id="contractName" placeholder="e.g., MyToken, VulnerableBank" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contractLanguage">Contract Language *</label>
+                    <select id="contractLanguage" required>
+                        <option value="Solidity">Solidity</option>
+                        <option value="Vyper">Vyper</option>
+                        <option value="Rust">Rust (Solana)</option>
+                        <option value="Move">Move</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="contractCode">Smart Contract Code *</label>
+                    <textarea id="contractCode" rows="20" 
+                        placeholder="Paste your smart contract code here..." required></textarea>
+                </div>
+                
+                <button type="submit" class="btn" id="submitBtn">
+                    🔍 Start Security Audit
+                </button>
+            </form>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="color: #667eea; font-weight: 600; font-size: 1.3em;">
+                    🤖 AI Agents are analyzing your contract...<br>
+                    <small style="color: #999; font-size: 0.9em;">This may take 1-2 minutes</small>
+                </p>
+            </div>
+        </div>
+
+        <div class="card results" id="results">
+            <!-- Results will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('auditForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            
+            const contractName = document.getElementById('contractName').value;
+            const contractLanguage = document.getElementById('contractLanguage').value;
+            const contractCode = document.getElementById('contractCode').value;
+            
+            submitBtn.disabled = true;
+            loading.classList.add('active');
+            results.classList.remove('active');
+            
+            try {
+                const response = await fetch('/audit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contract_name: contractName,
+                        contract_language: contractLanguage,
+                        contract_code: contractCode
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Audit failed');
+                }
+                
+                const data = await response.json();
+                displayResults(data);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error: ' + error.message + '\n\nPlease check:\n1. Your internet connection\n2. GEMINI_API_KEY is set correctly\n3. Backend is running');
+            } finally {
+                submitBtn.disabled = false;
+                loading.classList.remove('active');
+            }
+        });
+        
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            results.classList.add('active');
+            
+            let vulnerabilitiesHtml = '';
+            if (data.vulnerabilities && data.vulnerabilities.length > 0) {
+                vulnerabilitiesHtml = data.vulnerabilities.map(vuln => `
+                    <div class="vulnerability-card ${vuln.severity.toLowerCase()}">
+                        <span class="severity-badge severity-${vuln.severity.toLowerCase()}">${vuln.severity}</span>
+                        <h3 style="margin: 10px 0; color: #333;">${vuln.type}</h3>
+                        <p><strong>📍 Lines:</strong> ${Array.isArray(vuln.lines) ? vuln.lines.join(', ') : vuln.lines}</p>
+                        <p><strong>📝 Description:</strong> ${vuln.description}</p>
+                        <p><strong>💡 Recommendation:</strong> ${vuln.recommendation}</p>
+                    </div>
+                `).join('');
+            } else {
+                vulnerabilitiesHtml = '<div class="alert alert-success">✅ No critical vulnerabilities detected! Your contract looks secure.</div>';
+            }
+            
+            let optimizationsHtml = '';
+            if (data.gas_optimizations && data.gas_optimizations.length > 0) {
+                optimizationsHtml = `
+                    <h3 class="section-title">⚡ Gas Optimizations</h3>
+                    ${data.gas_optimizations.map(opt => `
+                        <div class="optimization-card">
+                            <h3 style="margin-bottom: 15px; color: #2c5282;">${opt.issue}</h3>
+                            <p><strong>📍 Location:</strong> ${opt.location}</p>
+                            <p><strong>💰 Potential Savings:</strong> ${opt.potential_savings}</p>
+                            <p><strong>🔧 Technique:</strong> ${opt.technique}</p>
+                            ${opt.example ? `<div class="code-snippet">${opt.example}</div>` : ''}
+                        </div>
+                    `).join('')}
+                `;
+            }
+            
+            let recommendationsHtml = '';
+            if (data.security_recommendations && data.security_recommendations.length > 0) {
+                recommendationsHtml = `
+                    <h3 class="section-title">💡 Security Recommendations</h3>
+                    <ul class="recommendation-list">
+                        ${data.security_recommendations.map(rec => `<li>✓ ${rec}</li>`).join('')}
+                    </ul>
+                `;
+            }
+            
+            const riskLevel = data.severity_score >= 7 ? '🔴 High Risk' : 
+                             data.severity_score >= 4 ? '🟡 Medium Risk' : 
+                             '🟢 Low Risk';
+            
+            const riskClass = data.severity_score >= 7 ? 'danger' : 
+                             data.severity_score >= 4 ? 'warning' : 
+                             'success';
+            
+            results.innerHTML = `
+                <h2 style="color: #333; margin-bottom: 30px;">📊 Audit Results: ${data.contract_name}</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.code_quality_score}</div>
+                        <div class="stat-label">Quality Score</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.vulnerabilities.length}</div>
+                        <div class="stat-label">Vulnerabilities</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.severity_score}/10</div>
+                        <div class="stat-label">Risk Score</div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-${riskClass}" style="font-size: 1.2em; text-align: center;">
+                    <strong>Security Level:</strong> ${riskLevel}
+                </div>
+                
+                <h3 class="section-title">🚨 Security Vulnerabilities</h3>
+                ${vulnerabilitiesHtml}
+                
+                ${optimizationsHtml}
+                
+                ${recommendationsHtml}
+                
+                <h3 class="section-title">📄 Detailed Analysis Report</h3>
+                <div style="background: #f7fafc; padding: 25px; border-radius: 12px; white-space: pre-wrap; font-family: 'Segoe UI', sans-serif; line-height: 1.8;">
+                    ${data.detailed_report}
+                </div>
+                
+                <p style="margin-top: 40px; padding: 20px; background: #f7fafc; border-radius: 10px; text-align: center; color: #666;">
+                    <small>
+                        ⏰ Audit completed at ${new Date(data.timestamp).toLocaleString()}<br>
+                        🤖 Powered by CrewAI + Google Gemini
+                    </small>
+                </p>
+            `;
+            
+            results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    </script>
+</body>
+</html>
