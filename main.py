@@ -12,7 +12,7 @@ import re
 
 # Import CrewAI components
 from crewai import Agent, Task, Crew, Process
-from crewai.models import OpenAI
+from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 app = FastAPI(
@@ -381,4 +381,5 @@ if __name__ == "__main__":
         uvicorn.run(app)
 
     
+
 
