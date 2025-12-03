@@ -60,7 +60,7 @@ def get_llm():
         raise ValueError("GEMINI_API_KEY not found in environment variables. Please set it in .env file")
     
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
+        model="gemini/gemini-2.0-flash",
         google_api_key=api_key,
         temperature=0.1,  # Lower temperature for more focused responses
         convert_system_message_to_human=True
@@ -325,6 +325,7 @@ if __name__ == "__main__":
         uvicorn.run(app)
 
     
+
 
 
 
