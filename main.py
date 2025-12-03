@@ -54,19 +54,18 @@ class HealthResponse(BaseModel):
 # from litellm import completion, ChatCompletion
 # from crewai import Agent
 
-# Initialize Gemini LLM
 def get_llm():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY not found in environment variables. Please set it in .env file")
     
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",  
+        model="gemini-1.5-flash",
         google_api_key=api_key,
-        temperature=0.3
+        temperature=0.1,  # Lower temperature for more focused responses
+        convert_system_message_to_human=True
     )
 
-# Create CrewAI Agents
 def create_audit_crew(contract_code: str, contract_language: str):
     """Create a crew of AI agents to audit smart contracts"""
     
@@ -75,110 +74,86 @@ def create_audit_crew(contract_code: str, contract_language: str):
     # Agent 1: Vulnerability Scanner
     vulnerability_scanner = Agent(
         role="Smart Contract Vulnerability Expert",
-        goal="Identify security vulnerabilities including reentrancy, integer overflow, access control issues, and front-running risks",
-        backstory="""You are a legendary smart contract security researcher who has 
-        discovered numerous critical vulnerabilities in production contracts. You have 
-        deep knowledge of common attack vectors and emerging threats.""",
+        goal="Identify security vulnerabilities in the smart contract",
+        backstory="You are a security expert who finds vulnerabilities in smart contracts.",
         llm=llm,
-        verbose=True,
+        verbose=False,
         allow_delegation=False
     )
     
-    # Agent 2: Gas Optimization Specialist
+    # Agent 2: Gas Optimizer
     gas_optimizer = Agent(
         role="Gas Optimization Engineer",
-        goal="Analyze code for gas inefficiencies and suggest optimizations to reduce transaction costs",
-        backstory="""You are a performance optimization expert specializing in 
-        blockchain gas efficiency. You know every trick to minimize gas costs while 
-        maintaining security.""",
+        goal="Find gas optimization opportunities in the smart contract",
+        backstory="You are an expert at optimizing smart contract gas usage.",
         llm=llm,
-        verbose=True,
+        verbose=False,
         allow_delegation=False
     )
     
     # Agent 3: Code Quality Auditor
     code_quality_auditor = Agent(
-        role="Smart Contract Code Quality Reviewer",
-        goal="Assess code quality, best practices, maintainability, and documentation",
-        backstory="""You are a senior blockchain architect with expertise in 
-        clean code principles applied to smart contracts. You ensure code is 
-        readable, maintainable, and well-documented.""",
+        role="Code Quality Reviewer",
+        goal="Assess the code quality and best practices",
+        backstory="You are a code quality expert for smart contracts.",
         llm=llm,
-        verbose=True,
+        verbose=False,
         allow_delegation=False
     )
     
-    # Agent 4: Security Report Writer
-    security_reporter = Agent(
-        role="Security Report Specialist",
-        goal="Compile comprehensive security audit reports with actionable recommendations",
-        backstory="""You are a technical writer specializing in security documentation. 
-        You transform complex security findings into clear, actionable reports.""",
-        llm=llm,
-        verbose=True,
-        allow_delegation=False
-    )
-    
-    # Define Tasks
+    # Define Tasks with simpler, more direct prompts
     vulnerability_task = Task(
         description=f"""Analyze this {contract_language} smart contract for security vulnerabilities.
 
 Contract Code:
 ```
-{contract_code[:2000]}
+{contract_code[:1500]}
 ```
 
-Identify vulnerabilities like:
-1. Reentrancy vulnerabilities
-2. Integer overflow/underflow risks
-3. Access control issues
-4. Unchecked external calls
-5. Front-running possibilities
-
-For each vulnerability, provide:
-- Type and severity (Critical/High/Medium/Low)
-- Description
+Find and list vulnerabilities. For each one, provide:
+- Type (e.g., Reentrancy, Access Control)
+- Severity (Critical, High, Medium, or Low)
+- Brief description
 - How to fix it
 
-Respond in this format:
-VULNERABILITY 1: [Type] - [Severity]
-Description: [details]
-Fix: [recommendation]
+Format your response EXACTLY like this:
+VULNERABILITY 1: Reentrancy - High
+Description: External call before state change
+Fix: Update state before external call
 
-VULNERABILITY 2: [Type] - [Severity]
-...and so on""",
+VULNERABILITY 2: Access Control - Medium
+Description: Missing access modifier
+Fix: Add onlyOwner modifier""",
         agent=vulnerability_scanner,
         expected_output="List of vulnerabilities with severity and fixes"
     )
     
     gas_optimization_task = Task(
-        description=f"""Analyze this {contract_language} smart contract for gas optimization opportunities.
+        description=f"""Analyze this {contract_language} smart contract for gas optimizations.
 
 Contract Code:
 ```
-{contract_code[:2000]}
+{contract_code[:1500]}
 ```
 
-Find optimization opportunities like:
-1. Inefficient storage patterns
-2. Redundant operations
-3. Expensive loops
-
-For each optimization, provide:
-- Location in code
-- Current issue
+Find gas optimization opportunities. For each one, provide:
+- Issue description
+- Location
 - Optimization technique
 - Estimated savings
 
-Respond in this format:
-OPTIMIZATION 1: [Issue]
-Location: [where]
-Technique: [how to fix]
-Savings: [estimate]
+Format your response EXACTLY like this:
+OPTIMIZATION 1: Use uint256 instead of uint8
+Location: Line 10
+Technique: Larger types are cheaper in storage
+Savings: ~5000 gas per transaction
 
-OPTIMIZATION 2: ...and so on""",
+OPTIMIZATION 2: Cache array length
+Location: Line 25
+Technique: Store length in variable before loop
+Savings: ~100 gas per iteration""",
         agent=gas_optimizer,
-        expected_output="List of gas optimizations with savings estimates"
+        expected_output="List of gas optimizations"
     )
     
     code_quality_task = Task(
@@ -186,65 +161,34 @@ OPTIMIZATION 2: ...and so on""",
 
 Contract Code:
 ```
-{contract_code[:2000]}
+{contract_code[:1500]}
 ```
-
-Evaluate:
-1. Code organization and structure
-2. Naming conventions
-3. Documentation
-4. Best practices
 
 Provide:
 - Quality score (0-100)
-- Issues found
-- Recommendations
+- List of issues
+- List of recommendations
 
-Respond in this format:
-QUALITY SCORE: [0-100]
+Format your response EXACTLY like this:
+QUALITY SCORE: 75
 
 ISSUES:
-1. [Issue description]
-2. [Issue description]
+1. Poor variable naming
+2. Missing documentation
 
 RECOMMENDATIONS:
-1. [Recommendation]
-2. [Recommendation]""",
+1. Add NatSpec comments
+2. Use descriptive variable names""",
         agent=code_quality_auditor,
         expected_output="Code quality score and recommendations"
     )
     
-    report_task = Task(
-        description="""Create a comprehensive security audit summary.
-
-Based on all previous findings, provide:
-1. Executive summary
-2. Overall risk level (Critical/High/Medium/Low)
-3. Top 3 priority recommendations
-4. Compliance notes
-
-Respond in this format:
-EXECUTIVE SUMMARY:
-[2-3 sentence overview]
-
-RISK LEVEL: [Critical/High/Medium/Low]
-
-PRIORITY RECOMMENDATIONS:
-1. [Most critical action]
-2. [Second priority]
-3. [Third priority]
-
-COMPLIANCE: [Any standards compliance notes]""",
-        agent=security_reporter,
-        expected_output="Executive summary and priority recommendations"
-    )
-    
-    # Create and return crew
+    # Create crew with sequential process
     crew = Crew(
-        agents=[vulnerability_scanner, gas_optimizer, code_quality_auditor, security_reporter],
-        tasks=[vulnerability_task, gas_optimization_task, code_quality_task, report_task],
+        agents=[vulnerability_scanner, gas_optimizer, code_quality_auditor],
+        tasks=[vulnerability_task, gas_optimization_task, code_quality_task],
         process=Process.sequential,
-        verbose=True
+        verbose=False
     )
     
     return crew
@@ -381,6 +325,7 @@ if __name__ == "__main__":
         uvicorn.run(app)
 
     
+
 
 
 
